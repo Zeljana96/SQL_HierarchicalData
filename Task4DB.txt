@@ -1,0 +1,74 @@
+CREATE TABLE [dbo].[Employee]
+( [EmployeeId] [int] NOT NULL IDENTITY(1,1) PRIMARY KEY
+, [FirstName]  [nvarchar](25) NOT NULL
+, [JobTitle]   [nvarchar](50) NULL
+);
+
+INSERT INTO [dbo].[Employee]
+VALUES
+  (1, 'Jessica', 'CEO')
+, (2, 'Mary', 'Marketing Manager')
+, (3, 'Mario','Production Manager')
+, (4, 'Lucy', 'Sales Officer')
+, (5, 'Jacob', 'Fabrication Manager')
+, (6, 'Andreas', 'Development Manager')
+, (7, 'Susan','Worker')
+, (8, 'John', 'Worker')
+
+ALTER TABLE [dbo].[Employee_path] WITH CHECK ADD CONSTRAINT [FK_Employee_path_Employee_Ancestor]
+  FOREIGN KEY ([Ancestor]) REFERENCES [dbo].[Employee] ([EmployeeId]);
+
+ALTER TABLE [dbo].[Employee_path] WITH CHECK ADD CONSTRAINT [FK_Employee_path_Employee_Descendant]
+  FOREIGN KEY ([Descendant]) REFERENCES [dbo].[Employee] ([EmployeeId]);
+
+INSERT INTO [dbo].[Employee_path]
+VALUES
+  (1, 1, 1, 0)
+, (2, 1, 2, 1)
+, (3, 1, 3, 1)
+, (4, 1, 4, 2)
+, (5, 1, 5, 2)
+, (6, 1, 6, 2)
+, (7, 1, 7, 3)
+, (8, 1, 8, 3)
+, (9, 2, 2, 0)
+, (10, 2, 4, 1)
+, (11, 4, 4, 0)
+, (12, 3, 3, 0)
+, (13, 3, 5, 1)
+, (14, 3, 6, 1)
+, (15, 3, 7, 2)
+, (16, 3, 8, 2)
+, (17, 5, 5, 0)
+, (18, 6, 6, 0)
+, (19, 6, 7, 1)
+, (20, 6, 8, 1)
+, (21, 7, 7, 0)
+, (22, 8, 8, 0)
+
+CREATE PROCEDURE [dbo].[FilteredEmployees] @Id int
+AS
+	 SELECT EmployeeId, FirstName, JobTitle, NumLevels, CASE 
+														WHEN EmployeeId = 1 THEN NULL
+														ELSE SuperiorName
+														END AS SuperiorName
+FROM
+    (SELECT  EmployeeId, FirstName, JobTitle, NumLevels, Ancestor
+	FROM (SELECT e.EmployeeId, e.FirstName, e.JobTitle, p.NumLevels
+		FROM Employee e INNER JOIN Employee_path p ON e.EmployeeId = p.Descendant
+		WHERE p.Ancestor = @Id) AS temp1
+		INNER JOIN 
+		(SELECT Id, Ancestor, Descendant
+		FROM Employee_path 
+		WHERE NumLevels = 1 OR Id = 1) AS temp2 ON temp1.EmployeeId = temp2.Descendant) as RelationWithoutSuperiorName
+		INNER JOIN 
+		(SELECT EmployeeId as SuperiorId, FirstName AS SuperiorName
+		FROM Employee) as proba1
+		ON proba1.SuperiorId = RelationWithoutSuperiorName.Ancestor 
+		
+GO;
+
+EXEC FilteredEmployees @Id = 1;
+EXEC FilteredEmployees @Id = 3;
+		
+
